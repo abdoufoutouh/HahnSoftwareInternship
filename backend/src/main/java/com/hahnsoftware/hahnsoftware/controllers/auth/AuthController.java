@@ -21,10 +21,11 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<Void> signup(@Valid @RequestBody SignupRequest req) {
-        authService.signup(req);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+    public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest request) {
+        authService.signup(request);
+        return ResponseEntity.ok("User registered");
     }
+
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
