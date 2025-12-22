@@ -1,74 +1,122 @@
 /**
- * Projects Page
- * Protected page that requires authentication
+ * Projects Dashboard Page
+ * Main dashboard view showing projects and statistics
  */
 
+import React, { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import DashboardLayout from '../component/dashboards/DashboardLayout';
+import StatsCards from '../component/dashboards/StatsCards';
+import ProjectsSection from '../component/dashboards/ProjectsSection';
 
-const Projects = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+// Mock data for projects
+const mockProjects = [
+  {
+    id: 1,
+    title: 'E-commerce Platform',
+    description: 'Build a full-featured online store with payment integration',
+    totalTasks: 12,
+    completedTasks: 8,
+    progress: 67,
+    lastUpdated: '2025-12-20'
+  },
+  {
+    id: 2,
+    title: 'Portfolio Website',
+    description: 'Personal portfolio showcasing my work and skills',
+    totalTasks: 5,
+    completedTasks: 3,
+    progress: 60,
+    lastUpdated: '2025-12-18'
+  },
+  {
+    id: 3,
+    title: 'Task Management App',
+    description: 'A Kanban-style task management application',
+    totalTasks: 15,
+    completedTasks: 5,
+    progress: 33,
+    lastUpdated: '2025-12-15'
+  },
+  {
+    id: 4,
+    title: 'API Integration',
+    description: 'Integrate third-party APIs into existing system',
+    totalTasks: 8,
+    completedTasks: 2,
+    progress: 25,
+    lastUpdated: '2025-12-10'
+  },
+  {
+    id: 5,
+    title: 'Mobile App UI/UX',
+    description: 'Design and implement mobile app interface',
+    totalTasks: 20,
+    completedTasks: 15,
+    progress: 75,
+    lastUpdated: '2025-12-22'
+  },
+  {
+    id: 6,
+    title: 'Database Optimization',
+    description: 'Optimize database queries and structure',
+    totalTasks: 7,
+    completedTasks: 7,
+    progress: 100,
+    lastUpdated: '2025-12-21'
+  }
+];
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+function Projects() {
+  const { user } = useAuth();
+  const [projects] = useState(mockProjects);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Calculate statistics
+  const totalProjects = projects.length;
+  const totalTasks = projects.reduce((sum, project) => sum + project.totalTasks, 0);
+  const completedTasks = projects.reduce((sum, project) => sum + project.completedTasks, 0);
+  const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  // Filter projects based on search term
+  const filteredProjects = projects.filter(project => 
+    project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    project.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSearch = (term) => {
+    setSearchTerm(term);
+  };
+
+  const handleCreateProject = () => {
+    // TODO: Implement project creation
+    console.log('Create new project');
+  };
+
+  const handleProjectClick = (projectId) => {
+    // TODO: Navigate to project details
+    console.log('Project clicked:', projectId);
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h1 style={styles.title}>Projects</h1>
-        <button onClick={handleLogout} style={styles.logoutButton}>
-          Logout
-        </button>
-      </div>
-      <div style={styles.content}>
-        <p>Welcome! You are authenticated.</p>
-        <p>This is a protected page that requires JWT authentication.</p>
-      </div>
-    </div>
+    <DashboardLayout pageTitle="My Projects">
+      {/* Stats Cards */}
+      <StatsCards 
+        totalProjects={totalProjects}
+        totalTasks={totalTasks}
+        completedTasks={completedTasks}
+        overallProgress={overallProgress}
+      />
+
+      {/* Projects Section */}
+      <ProjectsSection
+        projects={filteredProjects}
+        onSearch={handleSearch}
+        onCreateProject={handleCreateProject}
+        onProjectClick={handleProjectClick}
+      />
+    </DashboardLayout>
   );
 };
 
-const styles = {
-  container: {
-    minHeight: '100vh',
-    padding: '40px',
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '30px',
-    paddingBottom: '20px',
-    borderBottom: '2px solid #ddd',
-  },
-  title: {
-    fontSize: '32px',
-    fontWeight: 'bold',
-    color: '#333',
-    margin: 0,
-  },
-  logoutButton: {
-    padding: '10px 20px',
-    fontSize: '16px',
-    fontWeight: '500',
-    color: '#fff',
-    backgroundColor: '#dc3545',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  content: {
-    backgroundColor: '#fff',
-    padding: '30px',
-    borderRadius: '12px',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-  },
-};
-
 export default Projects;
-
