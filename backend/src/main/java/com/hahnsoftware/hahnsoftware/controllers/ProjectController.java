@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/projects")
 public class ProjectController {
@@ -32,4 +34,21 @@ public class ProjectController {
 
         return new ResponseEntity<>(createdProject, HttpStatus.CREATED);
     }
+
+    @GetMapping
+    public ResponseEntity<List<Project>> getMyProjects(Authentication authentication) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(projectService.getProjectsByUserEmail(email));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProject(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        String email = authentication.getName();
+        projectService.deleteProject(id, email);
+        return ResponseEntity.noContent().build();
+    }
+
 }

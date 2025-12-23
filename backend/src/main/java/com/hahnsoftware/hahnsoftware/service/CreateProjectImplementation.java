@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class CreateProjectImplementation implements ProjectService {
 
@@ -32,5 +34,19 @@ public class CreateProjectImplementation implements ProjectService {
 
         return projectRepository.save(project);
 
-}
+    }
+
+    @Override
+    public List<Project> getProjectsByUserEmail(String email) {
+        return projectRepository.findAllByUser_Email(email);
+    }
+
+    @Override
+    public void deleteProject(Long projectId, String userEmail) {
+        Project project = projectRepository.findById(projectId).
+                orElseThrow(() -> new RuntimeException("Project not found"));
+
+        projectRepository.delete(project);
+
+    }
 }
