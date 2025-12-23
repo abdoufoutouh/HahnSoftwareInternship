@@ -3,7 +3,7 @@
  * Main dashboard view showing projects and statistics
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import DashboardLayout from '../component/dashboards/DashboardLayout';
 import StatsCards from '../component/dashboards/StatsCards';
@@ -11,73 +11,129 @@ import ProjectCardWithActions from '../component/dashboards/ProjectCardWithActio
 import Modal from '../component/common/Modal';
 import { projectApi } from '../api/projectApi';
 
-// Mock data for projects
-const mockProjects = [
-  {
-    id: 1,
-    title: 'E-commerce Platform',
-    description: 'Build a full-featured online store with payment integration',
-    totalTasks: 12,
-    completedTasks: 8,
-    progress: 67,
-    lastUpdated: '2025-12-20'
-  },
-  {
-    id: 2,
-    title: 'Portfolio Website',
-    description: 'Personal portfolio showcasing my work and skills',
-    totalTasks: 5,
-    completedTasks: 3,
-    progress: 60,
-    lastUpdated: '2025-12-18'
-  },
-  {
-    id: 3,
-    title: 'Task Management App',
-    description: 'A Kanban-style task management application',
-    totalTasks: 15,
-    completedTasks: 5,
-    progress: 33,
-    lastUpdated: '2025-12-15'
-  },
-  {
-    id: 4,
-    title: 'API Integration',
-    description: 'Integrate third-party APIs into existing system',
-    totalTasks: 8,
-    completedTasks: 2,
-    progress: 25,
-    lastUpdated: '2025-12-10'
-  },
-  {
-    id: 5,
-    title: 'Mobile App UI/UX',
-    description: 'Design and implement mobile app interface',
-    totalTasks: 20,
-    completedTasks: 15,
-    progress: 75,
-    lastUpdated: '2025-12-22'
-  },
-  {
-    id: 6,
-    title: 'Database Optimization',
-    description: 'Optimize database queries and structure',
-    totalTasks: 7,
-    completedTasks: 7,
-    progress: 100,
-    lastUpdated: '2025-12-21'
-  }
-];
-
 function Projects() {
   const { user } = useAuth();
-  const [projects, setProjects] = useState(mockProjects);
+  const [projects, setProjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+
+  /**
+   * Transform API project response to UI format
+   * API returns: { id, title, description, tasks: [] }
+   * UI expects: { id, title, description, totalTasks, completedTasks, progress, lastUpdated }
+   */
+  const transformProject = (apiProject, progressData = null) => {
+    if (!apiProject || !apiProject.id) {
+      return null;
+    }
+
+    // Use backend progress if available, otherwise calculate from tasks
+    let totalTasks = 0;
+    let completedTasks = 0;
+    let progress = 0;
+
+    if (progressData) {
+      // Use backend-calculated progress
+      // Backend returns: { projectId, totalTasks, completedTasks, progressPercentage }
+      totalTasks = progressData.totalTasks || 0;
+      completedTasks = progressData.completedTasks || 0;
+      // Backend field is "progressPercentage", not "progress"
+      const progressValue = progressData.progressPercentage !== undefined 
+        ? progressData.progressPercentage 
+        : (progressData.progress !== undefined ? progressData.progress : 0);
+      // Ensure progress is a number between 0 and 100
+      progress = typeof progressValue === 'number' 
+        ? Math.max(0, Math.min(100, progressValue)) 
+        : 0;
+    } else {
+      // Fallback: calculate from tasks array
+      const tasks = Array.isArray(apiProject.tasks) ? apiProject.tasks : [];
+      totalTasks = tasks.length;
+      completedTasks = tasks.filter(task => task.completed === true).length;
+      progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    }
+
+    return {
+      id: apiProject.id,
+      title: apiProject.title || '',
+      description: apiProject.description || '',
+      totalTasks,
+      completedTasks,
+      progress,
+      lastUpdated: new Date().toISOString().slice(0, 10)
+    };
+  };
+
+  /**
+   * Fetch projects from API on component mount
+   */
+  useEffect(() => {
+    const loadProjects = async () => {
+      setIsLoadingProjects(true);
+      setError('');
+
+      try {
+        // Fetch projects list
+        const apiProjects = await projectApi.getMyProjects();
+        
+        if (!Array.isArray(apiProjects)) {
+          console.error('Invalid API response:', apiProjects);
+          setProjects([]);
+          return;
+        }
+
+        // Fetch progress for each project in parallel
+        const progressPromises = apiProjects.map(async (project) => {
+          try {
+            const progressData = await projectApi.getProjectProgress(project.id);
+            console.log(`Progress data for project ${project.id}:`, progressData);
+            return { projectId: project.id, progressData };
+          } catch (err) {
+            // If progress fetch fails, use null (will fallback to task-based calculation)
+            console.warn(`Failed to fetch progress for project ${project.id}:`, err);
+            return { projectId: project.id, progressData: null };
+          }
+        });
+
+        const progressResults = await Promise.all(progressPromises);
+        
+        // Create a map of projectId -> progressData for quick lookup
+        const progressMap = new Map();
+        progressResults.forEach(({ projectId, progressData }) => {
+          progressMap.set(projectId, progressData);
+        });
+
+        // Transform projects with their progress data
+        const transformedProjects = apiProjects
+          .map(apiProject => {
+            const progressData = progressMap.get(apiProject.id);
+            const transformed = transformProject(apiProject, progressData);
+            // Debug: log progress values
+            if (transformed) {
+              console.log(`Project ${transformed.id} (${transformed.title}): progress = ${transformed.progress}%`);
+            }
+            return transformed;
+          })
+          .filter(project => project !== null);
+
+        setProjects(transformedProjects);
+      } catch (err) {
+        console.error('Error loading projects:', err);
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to load projects';
+        setError(errorMessage);
+        setProjects([]);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    };
+
+    loadProjects();
+  }, []);
 
   // Calculate statistics
   const totalProjects = projects.length;
@@ -111,19 +167,28 @@ function Projects() {
     try {
       setLoading(true);
       setError('');
-      const created = await projectApi.createProject({ title: title.trim(), description: description.trim() || undefined });
+      const created = await projectApi.createProject({ 
+        title: title.trim(), 
+        description: description.trim() || undefined 
+      });
+      
+      // Fetch progress for the newly created project
+      let progressData = null;
+      try {
+        progressData = await projectApi.getProjectProgress(created.id);
+      } catch (progressErr) {
+        // If progress fetch fails, use null (will fallback to task-based calculation)
+        console.warn(`Failed to fetch progress for new project ${created.id}:`, progressErr);
+      }
+      
       setIsCreateOpen(false);
       setLoading(false);
-      setProjects((prev) => [{
-        id: created?.id ?? Math.random(),
-        title: created?.title ?? title.trim(),
-        description: created?.description ?? (description.trim() || ''),
-        totalTasks: 0,
-        completedTasks: 0,
-        progress: 0,
-        lastUpdated: new Date().toISOString().slice(0,10)
-      }, ...prev]);
-      console.log('Project created, refresh list');
+      
+      // Transform and add the newly created project with progress
+      const transformedProject = transformProject(created, progressData);
+      if (transformedProject) {
+        setProjects((prev) => [transformedProject, ...prev]);
+      }
     } catch (err) {
       setLoading(false);
       const message = err?.response?.data?.message || 'Failed to create project. Please try again.';
@@ -136,10 +201,25 @@ function Projects() {
     console.log('Project clicked:', projectId);
   };
 
-  const handleDeleteProject = (projectId) => {
-    // Remove the project locally (hardcoded data for now)
-    setProjects((prev) => prev.filter((p) => p.id !== projectId));
-    console.log('Project deleted:', projectId);
+  const handleDeleteProject = async (projectId) => {
+    // Show confirmation dialog
+    const confirmed = window.confirm('Are you sure you want to delete this project?');
+    
+    if (!confirmed) {
+      return; // User cancelled, do nothing
+    }
+
+    try {
+      // Call API to delete project
+      await projectApi.deleteProject(projectId);
+      
+      // Remove project from UI state after successful deletion
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    } catch (err) {
+      console.error('Failed to delete project:', err);
+      const errorMessage = err.response?.data?.message || 'Failed to delete project. Please try again.';
+      setError(errorMessage);
+    }
   };
 
   return (
@@ -163,6 +243,14 @@ function Projects() {
           </div>
         </form>
       </Modal>
+
+      {/* Error message display */}
+      {error && !isCreateOpen && (
+        <div className="error-text" style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'var(--error-bg, #fee)', borderRadius: '4px' }}>
+          {error}
+        </div>
+      )}
+
       {/* Stats Cards */}
       <StatsCards 
         totalProjects={totalProjects}
@@ -190,21 +278,28 @@ function Projects() {
         </div>
 
         <div className="projects-grid">
-          {filteredProjects.map((p) => (
-            <ProjectCardWithActions
-              key={p.id}
-              project={p}
-              onProjectClick={handleProjectClick}
-              onDeleteProject={handleDeleteProject}
-            />
-          ))}
-          {filteredProjects.length === 0 && (
-            <div style={{ color: 'var(--text-muted)' }}>No projects found.</div>
+          {isLoadingProjects ? (
+            <div style={{ color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>
+              Loading projects...
+            </div>
+          ) : filteredProjects.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>
+              {searchTerm ? 'No projects match your search.' : 'No projects found. Create your first project!'}
+            </div>
+          ) : (
+            filteredProjects.map((p) => (
+              <ProjectCardWithActions
+                key={p.id}
+                project={p}
+                onProjectClick={handleProjectClick}
+                onDeleteProject={handleDeleteProject}
+              />
+            ))
           )}
         </div>
       </section>
     </DashboardLayout>
   );
-};
+}
 
 export default Projects;

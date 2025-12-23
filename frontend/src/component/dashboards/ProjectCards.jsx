@@ -3,6 +3,9 @@ import ProgressBar from './ProgressBar';
 
 const ProjectCard = ({ project, onClick }) => {
   const { id, title, description, totalTasks, completedTasks, progress } = project;
+  
+  // Ensure progress is a valid number between 0 and 100
+  const progressValue = typeof progress === 'number' ? Math.max(0, Math.min(100, progress)) : 0;
 
   const handleClick = () => {
     if (onClick) onClick(id);
@@ -17,7 +20,7 @@ const ProjectCard = ({ project, onClick }) => {
         <div className="project-meta">{completedTasks} completed • {totalTasks} tasks</div>
       </div>
       <div className="progress-wrap">
-        <ProgressBar percent={progress} ariaLabel={`${title} progress`} />
+        <ProgressBar percent={progressValue} ariaLabel={`${title} progress`} />
       </div>
     </div>
   );
