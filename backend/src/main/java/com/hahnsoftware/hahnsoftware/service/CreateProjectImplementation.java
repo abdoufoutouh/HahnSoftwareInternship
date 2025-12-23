@@ -1,13 +1,13 @@
 package com.hahnsoftware.hahnsoftware.service;
 
 import com.hahnsoftware.hahnsoftware.controllers.auth.dto.ProjectProgressResponse;
+import com.hahnsoftware.hahnsoftware.exception.ResourceNotFoundException;
+import com.hahnsoftware.hahnsoftware.exception.UnauthorizedActionException;
 import com.hahnsoftware.hahnsoftware.models.Project;
 import com.hahnsoftware.hahnsoftware.models.Task;
 import com.hahnsoftware.hahnsoftware.models.User;
 import com.hahnsoftware.hahnsoftware.repository.ProjectRepository;
 import com.hahnsoftware.hahnsoftware.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,8 +15,8 @@ import java.util.List;
 @Service
 public class CreateProjectImplementation implements ProjectService {
 
-    private  final  ProjectRepository projectRepository;
-    private  final UserRepository userRepository;
+    private final ProjectRepository projectRepository;
+    private final UserRepository userRepository;
 
     public CreateProjectImplementation(ProjectRepository projectRepository, UserRepository userRepository) {
         this.projectRepository = projectRepository;
@@ -25,9 +25,8 @@ public class CreateProjectImplementation implements ProjectService {
 
     @Override
     public Project createProject(String title, String description, String userEmail) {
-
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Project project = new Project();
         project.setTitle(title);
@@ -35,7 +34,6 @@ public class CreateProjectImplementation implements ProjectService {
         project.setUser(user);
 
         return projectRepository.save(project);
-
     }
 
     @Override
@@ -45,18 +43,17 @@ public class CreateProjectImplementation implements ProjectService {
 
     @Override
     public void deleteProject(Long projectId, String userEmail) {
-        Project project = projectRepository.findById(projectId).
-                orElseThrow(() -> new RuntimeException("Project not found"));
+        Project project = projectRepository.findByIdAndUser_Email(projectId, userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
 
         projectRepository.delete(project);
-
     }
+
     @Override
     public ProjectProgressResponse getProjectProgress(Long projectId, String userEmail) {
-
         Project project = projectRepository
                 .findByIdAndUser_Email(projectId, userEmail)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
 
         int totalTasks = project.getTasks().size();
         int completedTasks = (int) project.getTasks()
@@ -75,7 +72,4 @@ public class CreateProjectImplementation implements ProjectService {
                 progress
         );
     }
-
-
-
 }

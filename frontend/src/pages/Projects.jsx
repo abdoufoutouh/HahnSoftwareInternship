@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import DashboardLayout from '../component/dashboards/DashboardLayout';
 import StatsCards from '../component/dashboards/StatsCards';
 import ProjectCardWithActions from '../component/dashboards/ProjectCardWithActions';
+import ProjectDetailsModal from '../component/dashboards/ProjectDetailsModal';
 import Modal from '../component/common/Modal';
 import Toast from '../component/common/Toast';
 import { projectApi } from '../api/projectApi';
@@ -36,6 +37,10 @@ function Projects() {
   // Toast notification state
   const [toastMessage, setToastMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+  
+  // Project details modal state
+  const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
 
   /**
    * Transform API project response to UI format
@@ -212,8 +217,47 @@ function Projects() {
   };
 
   const handleProjectClick = (projectId) => {
-    // TODO: Navigate to project details
-    console.log('Project clicked:', projectId);
+    const project = projects.find(p => p.id === projectId);
+    if (project) {
+      setSelectedProject(project);
+      setIsProjectDetailsOpen(true);
+    }
+  };
+
+  const handleCloseProjectDetails = () => {
+    setIsProjectDetailsOpen(false);
+    setSelectedProject(null);
+    // Refresh projects to get updated progress
+    const refreshProjects = async () => {
+      try {
+        const apiProjects = await projectApi.getMyProjects();
+        if (Array.isArray(apiProjects)) {
+          const progressPromises = apiProjects.map(async (project) => {
+            try {
+              const progressData = await projectApi.getProjectProgress(project.id);
+              return { projectId: project.id, progressData };
+            } catch (err) {
+              return { projectId: project.id, progressData: null };
+            }
+          });
+          const progressResults = await Promise.all(progressPromises);
+          const progressMap = new Map();
+          progressResults.forEach(({ projectId, progressData }) => {
+            progressMap.set(projectId, progressData);
+          });
+          const transformedProjects = apiProjects
+            .map(apiProject => {
+              const progressData = progressMap.get(apiProject.id);
+              return transformProject(apiProject, progressData);
+            })
+            .filter(project => project !== null);
+          setProjects(transformedProjects);
+        }
+      } catch (err) {
+        console.error('Failed to refresh projects:', err);
+      }
+    };
+    refreshProjects();
   };
 
   const handleDeleteProject = async (projectId) => {
@@ -230,6 +274,10 @@ function Projects() {
       
       // Remove project from UI state after successful deletion
       setProjects((prev) => prev.filter((p) => p.id !== projectId));
+      
+      // Show success toast
+      setToastMessage('Projet supprimé avec succès !');
+      setToastVisible(true);
     } catch (err) {
       console.error('Failed to delete project:', err);
       const errorMessage = err.response?.data?.message || 'Failed to delete project. Please try again.';
@@ -377,6 +425,13 @@ function Projects() {
           </div>
         </form>
       </Modal>
+
+      {/* Project Details Modal */}
+      <ProjectDetailsModal
+        isOpen={isProjectDetailsOpen}
+        project={selectedProject}
+        onClose={handleCloseProjectDetails}
+      />
 
       {/* Toast Notification */}
       <Toast

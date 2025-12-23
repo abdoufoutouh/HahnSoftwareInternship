@@ -18,20 +18,21 @@ const Toast = ({ message, type = 'success', isVisible, onClose, duration = 3000 
       className={`toast toast-${type}`}
       style={{
         position: 'fixed',
-        top: '20px',
-        right: '20px',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
         zIndex: 10000,
-        minWidth: '300px',
-        maxWidth: '400px',
-        padding: '16px 20px',
+        minWidth: '350px',
+        maxWidth: '500px',
+        padding: '20px 24px',
         backgroundColor: type === 'success' ? '#10b981' : '#ef4444',
         color: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        borderRadius: '12px',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        animation: 'slideInRight 0.3s ease-out',
+        gap: '16px',
+        animation: 'fadeInScale 0.3s ease-out',
       }}
     >
       <div style={{ fontSize: '20px' }}>
@@ -59,13 +60,13 @@ const Toast = ({ message, type = 'success', isVisible, onClose, duration = 3000 
         ×
       </button>
       <style>{`
-        @keyframes slideInRight {
+        @keyframes fadeInScale {
           from {
-            transform: translateX(100%);
+            transform: translate(-50%, -50%) scale(0.9);
             opacity: 0;
           }
           to {
-            transform: translateX(0);
+            transform: translate(-50%, -50%) scale(1);
             opacity: 1;
           }
         }

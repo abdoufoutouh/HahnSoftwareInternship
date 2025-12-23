@@ -3,6 +3,8 @@ package com.hahnsoftware.hahnsoftware.repository;
 import com.hahnsoftware.hahnsoftware.models.Project;
 import com.hahnsoftware.hahnsoftware.models.Task;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,5 +17,7 @@ public interface TaskRepository  extends JpaRepository<Task, Long> {
 
     Optional<Task> findByIdAndProject_Id(Long taskId, Long projectId);
 
+    @Query("SELECT t FROM Task t JOIN FETCH t.project WHERE t.id = :taskId")
+    Optional<Task> findByIdWithProject(@Param("taskId") Long taskId);
 
 }

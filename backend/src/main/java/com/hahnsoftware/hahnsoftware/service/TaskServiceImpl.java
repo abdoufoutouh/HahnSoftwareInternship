@@ -1,5 +1,7 @@
 package com.hahnsoftware.hahnsoftware.service;
 
+import com.hahnsoftware.hahnsoftware.exception.ResourceNotFoundException;
+import com.hahnsoftware.hahnsoftware.exception.UnauthorizedActionException;
 import com.hahnsoftware.hahnsoftware.models.Project;
 import com.hahnsoftware.hahnsoftware.models.Task;
 import com.hahnsoftware.hahnsoftware.repository.ProjectRepository;
@@ -7,6 +9,7 @@ import com.hahnsoftware.hahnsoftware.repository.TaskRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 public class TaskServiceImpl implements TaskService {
@@ -21,11 +24,9 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public Task createTask(Long projectId, String title, String description, LocalDate dueDate, String userEmail) {
-        // Fetch project and verify ownership
         Project project = projectRepository.findByIdAndUser_Email(projectId, userEmail)
-                .orElseThrow(() -> new RuntimeException("Project not found or unauthorized access"));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
 
-        // Create task
         Task task = Task.builder()
                 .title(title)
                 .description(description)
@@ -34,8 +35,69 @@ public class TaskServiceImpl implements TaskService {
                 .project(project)
                 .build();
 
-        // Save and return
         return taskRepository.save(task);
+    }
+
+    @Override
+    public List<Task> getTasksByProject(Long projectId, String userEmail) {
+        projectRepository.findByIdAndUser_Email(projectId, userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+
+        return taskRepository.findByProject_Id(projectId);
+    }
+
+    @Override
+    public Task toggleTask(Long taskId, String userEmail) {
+        Task task = taskRepository.findByIdWithProject(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+
+        Project project = task.getProject();
+        if (project == null) {
+            throw new ResourceNotFoundException("Task project not found");
+        }
+        
+        projectRepository.findByIdAndUser_Email(project.getId(), userEmail)
+                .orElseThrow(() -> new UnauthorizedActionException("Unauthorized access"));
+
+        task.setCompleted(!task.isCompleted());
+
+        return taskRepository.save(task);
+    }
+
+    @Override
+    public Task updateTask(Long taskId, String title, String description, LocalDate dueDate, String userEmail) {
+        Task task = taskRepository.findByIdWithProject(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+
+        Project project = task.getProject();
+        if (project == null) {
+            throw new ResourceNotFoundException("Task project not found");
+        }
+        
+        projectRepository.findByIdAndUser_Email(project.getId(), userEmail)
+                .orElseThrow(() -> new UnauthorizedActionException("Unauthorized access"));
+
+        task.setTitle(title);
+        task.setDescription(description);
+        task.setDueDate(dueDate);
+
+        return taskRepository.save(task);
+    }
+
+    @Override
+    public void deleteTask(Long taskId, String userEmail) {
+        Task task = taskRepository.findByIdWithProject(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+
+        Project project = task.getProject();
+        if (project == null) {
+            throw new ResourceNotFoundException("Task project not found");
+        }
+        
+        projectRepository.findByIdAndUser_Email(project.getId(), userEmail)
+                .orElseThrow(() -> new UnauthorizedActionException("Unauthorized access"));
+
+        taskRepository.delete(task);
     }
 }
 
