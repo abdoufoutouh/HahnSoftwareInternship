@@ -90,12 +90,12 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px; /* a bit more breathing room */
+  padding: 20px 24px; /* a bit more breathing room */
   color: var(--text-primary);
   position: sticky; /* keep top actions visible */
   top: 0;
   z-index: 10;
-  background: linear-gradient(135deg, rgba(102,126,234,0.28), rgba(118,75,162,0.28));
+  background: linear-gradient(135deg, rgba(102,126,234,0.35), rgba(118,75,162,0.35));
 }
 
 .topbar .title {
@@ -132,13 +132,13 @@ html, body, #root {
 
 /* Content spacing */
 .dashboard-content {
-  margin-top: 12px;
-  padding: 20px 24px 28px; /* inner gutters to make content airy */
+  margin-top: 16px;
   color: var(--text-primary);
+  padding: 24px 24px 32px; /* comfortable inner gutters while staying full-bleed */
 }
 
 .dashboard-section {
-  margin-top: 28px; /* larger rhythm between sections */
+  margin-top: 32px; /* more vertical rhythm */
 }
 
 .dashboard-title {
@@ -149,14 +149,14 @@ html, body, #root {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px; /* more air between stat cards */
+  gap: 20px; /* airier cards */
 }
 
 .stat-card {
   background: var(--card-bg);
   border: 1px solid var(--panel-border);
-  border-radius: 14px; /* a touch friendlier */
-  padding: 14px; /* slightly more breathing space */
+  border-radius: 12px;
+  padding: 16px; /* more comfortable */
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -167,9 +167,9 @@ html, body, #root {
 .stat-card:hover { transform: translateY(-2px); background: var(--card-hover); }
 
 .stat-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   background: var(--accent-soft);
   display: grid;
   place-items: center;
@@ -182,8 +182,98 @@ html, body, #root {
   color: var(--text-muted);
 }
 
+/* Modal Overlay and Dialog */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.35);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  animation: overlayFade 200ms ease-out;
+  z-index: 50;
+}
+
+@keyframes overlayFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  width: 100%;
+  max-width: 520px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-strong);
+  color: var(--text-primary);
+  transform: scale(0.96);
+  opacity: 0;
+  animation: modalIn 220ms ease-out forwards;
+}
+
+@keyframes modalIn {
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.modal-body {
+  padding: 18px;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* Form elements inside modal */
+.form-group { display: grid; gap: 8px; margin-bottom: 14px; }
+.form-label { font-size: 14px; color: var(--text-muted); }
+.input, .textarea {
+  width: 100%;
+  background: var(--card-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 12px 12px;
+  outline: none;
+}
+.textarea { min-height: 96px; resize: vertical; }
+
+.actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-ghost { background: transparent; color: var(--text-primary); border: 1px solid var(--panel-border); }
+.btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.error-text { color: #f87171; font-size: 13px; margin-top: 6px; }
+
+/* Small spinner inside buttons */
+.spinner {
+  width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff; border-radius: 50%; display: inline-block;
+  animation: spin 0.8s linear infinite; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .stat-body .value {
-  font-size: 18px; /* slightly smaller */
+  font-size: 20px; /* clearer emphasis */
   font-weight: 700;
 }
 
@@ -197,12 +287,12 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 20px; /* more breathing room */
 }
 
 .controls {
   display: flex;
-  gap: 14px;
+  gap: 16px; /* clearer separation */
 }
 
 .create-btn {
@@ -215,19 +305,22 @@ html, body, #root {
   box-shadow: var(--shadow-soft);
 }
 
+.create-btn:hover, .create-btn:focus-visible { filter: brightness(1.05); outline: none; }
+.search-input:focus-visible { outline: 2px solid rgba(255,255,255,0.35); outline-offset: 2px; }
+
 .search-input {
   background: rgba(255,255,255,0.16);
   border: 1px solid var(--panel-border);
   color: var(--text-primary);
   padding: 10px 12px;
   border-radius: 10px;
-  min-width: 240px;
+  min-width: 280px;
 }
 
 .projects-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px; /* a bit more air between tiles */
+  gap: 20px; /* airier layout */
 }
 
 /* Folder-like Project Card */
@@ -237,7 +330,7 @@ html, body, #root {
   border-radius: 14px;
   color: var(--text-primary);
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.18); /* softer, friendlier */
+  box-shadow: var(--shadow-soft);
   overflow: hidden;
   transition: transform 0.15s, background 0.2s;
 }
@@ -251,11 +344,11 @@ html, body, #root {
 
 .project-body { padding: 14px 14px 8px; }
 
-.project-title { font-weight: 700; margin: 0 0 6px; }
+.project-title { font-weight: 700; margin: 0 0 6px; font-size: 17px; }
 
-.project-desc { color: var(--text-muted); font-size: 14px; margin: 0 0 10px; }
+.project-desc { color: var(--text-muted); font-size: 14px; line-height: 1.5; margin: 0 0 10px; }
 
-.project-meta { color: var(--text-muted); font-size: 12px; margin-bottom: 12px; }
+.project-meta { color: var(--text-muted); font-size: 12px; margin-bottom: 10px; }
 
 /* Progress Bar */
 .progress-wrap { padding: 0 14px 14px; }
@@ -295,3 +388,22 @@ html, body, #root {
 @media (min-width: 1400px) {
   .projects-grid { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* Actions below cards */
+.project-card-with-actions { display: flex; flex-direction: column; gap: 10px; }
+.card-actions {
+  display: flex;
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+.btn {
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-secondary { background: rgba(255,255,255,0.2); color: #fff; }
+.btn-secondary:hover { background: rgba(255,255,255,0.28); }
+.btn-danger { background: #ef4444; color: #fff; }
+.btn-danger:hover { filter: brightness(1.05); }

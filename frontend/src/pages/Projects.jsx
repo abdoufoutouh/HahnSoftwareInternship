@@ -7,7 +7,9 @@ import React, { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import DashboardLayout from '../component/dashboards/DashboardLayout';
 import StatsCards from '../component/dashboards/StatsCards';
-import ProjectsSection from '../component/dashboards/ProjectsSection';
+import ProjectCardWithActions from '../component/dashboards/ProjectCardWithActions';
+import Modal from '../component/common/Modal';
+import { projectApi } from '../api/projectApi';
 
 // Mock data for projects
 const mockProjects = [
@@ -69,8 +71,13 @@ const mockProjects = [
 
 function Projects() {
   const { user } = useAuth();
-  const [projects] = useState(mockProjects);
+  const [projects, setProjects] = useState(mockProjects);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Calculate statistics
   const totalProjects = projects.length;
@@ -89,8 +96,39 @@ function Projects() {
   };
 
   const handleCreateProject = () => {
-    // TODO: Implement project creation
-    console.log('Create new project');
+    setError('');
+    setTitle('');
+    setDescription('');
+    setIsCreateOpen(true);
+  };
+
+  const submitCreateProject = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      setError('Project title is required.');
+      return;
+    }
+    try {
+      setLoading(true);
+      setError('');
+      const created = await projectApi.createProject({ title: title.trim(), description: description.trim() || undefined });
+      setIsCreateOpen(false);
+      setLoading(false);
+      setProjects((prev) => [{
+        id: created?.id ?? Math.random(),
+        title: created?.title ?? title.trim(),
+        description: created?.description ?? (description.trim() || ''),
+        totalTasks: 0,
+        completedTasks: 0,
+        progress: 0,
+        lastUpdated: new Date().toISOString().slice(0,10)
+      }, ...prev]);
+      console.log('Project created, refresh list');
+    } catch (err) {
+      setLoading(false);
+      const message = err?.response?.data?.message || 'Failed to create project. Please try again.';
+      setError(message);
+    }
   };
 
   const handleProjectClick = (projectId) => {
@@ -98,8 +136,33 @@ function Projects() {
     console.log('Project clicked:', projectId);
   };
 
+  const handleDeleteProject = (projectId) => {
+    // Remove the project locally (hardcoded data for now)
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    console.log('Project deleted:', projectId);
+  };
+
   return (
     <DashboardLayout pageTitle="My Projects">
+      <Modal isOpen={isCreateOpen} title="Create New Project" onClose={() => !loading && setIsCreateOpen(false)}>
+        <form onSubmit={submitCreateProject}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="project-title">Project Title</label>
+            <input id="project-title" className="input" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter project title" required />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="project-desc">Project Description</label>
+            <textarea id="project-desc" className="textarea" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
+          </div>
+          {error && <div className="error-text" role="alert">{error}</div>}
+          <div className="actions">
+            <button type="button" className="btn btn-ghost" onClick={() => setIsCreateOpen(false)} disabled={loading}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? <span className="spinner" /> : 'Create Project'}
+            </button>
+          </div>
+        </form>
+      </Modal>
       {/* Stats Cards */}
       <StatsCards 
         totalProjects={totalProjects}
@@ -109,12 +172,37 @@ function Projects() {
       />
 
       {/* Projects Section */}
-      <ProjectsSection
-        projects={filteredProjects}
-        onSearch={handleSearch}
-        onCreateProject={handleCreateProject}
-        onProjectClick={handleProjectClick}
-      />
+      <section className="dashboard-section">
+        <div className="projects-header">
+          <h2 style={{ margin: 0 }}>Projects</h2>
+          <div className="controls">
+            <button className="create-btn" onClick={handleCreateProject}>Create Project</button>
+            <label aria-label="Search projects" style={{ display: 'contents' }}>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search projects..."
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="projects-grid">
+          {filteredProjects.map((p) => (
+            <ProjectCardWithActions
+              key={p.id}
+              project={p}
+              onProjectClick={handleProjectClick}
+              onDeleteProject={handleDeleteProject}
+            />
+          ))}
+          {filteredProjects.length === 0 && (
+            <div style={{ color: 'var(--text-muted)' }}>No projects found.</div>
+          )}
+        </div>
+      </section>
     </DashboardLayout>
   );
 };
