@@ -9,7 +9,9 @@ import DashboardLayout from '../component/dashboards/DashboardLayout';
 import StatsCards from '../component/dashboards/StatsCards';
 import ProjectCardWithActions from '../component/dashboards/ProjectCardWithActions';
 import Modal from '../component/common/Modal';
+import Toast from '../component/common/Toast';
 import { projectApi } from '../api/projectApi';
+import { taskApi } from '../api/taskApi';
 
 function Projects() {
   const { user } = useAuth();
@@ -21,6 +23,19 @@ function Projects() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  
+  // Task creation modal state
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [taskDueDate, setTaskDueDate] = useState('');
+  const [taskLoading, setTaskLoading] = useState(false);
+  const [taskError, setTaskError] = useState('');
+  
+  // Toast notification state
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
 
   /**
    * Transform API project response to UI format
@@ -222,6 +237,72 @@ function Projects() {
     }
   };
 
+  const handleAddTasks = (projectId) => {
+    setSelectedProjectId(projectId);
+    setTaskTitle('');
+    setTaskDescription('');
+    setTaskDueDate('');
+    setTaskError('');
+    setIsAddTaskOpen(true);
+  };
+
+  const submitCreateTask = async (e) => {
+    e.preventDefault();
+    if (!taskTitle.trim()) {
+      setTaskError('Task title is required.');
+      return;
+    }
+    if (!taskDueDate) {
+      setTaskError('Due date is required.');
+      return;
+    }
+
+    try {
+      setTaskLoading(true);
+      setTaskError('');
+      
+      // Create task
+      await taskApi.createTask(selectedProjectId, {
+        title: taskTitle.trim(),
+        description: taskDescription.trim() || undefined,
+        dueDate: taskDueDate
+      });
+
+      // Close modal
+      setIsAddTaskOpen(false);
+      setTaskLoading(false);
+
+      // Show success toast
+      setToastMessage('Task ajoutée avec succès !');
+      setToastVisible(true);
+
+      // Refresh project progress for the updated project
+      try {
+        const progressData = await projectApi.getProjectProgress(selectedProjectId);
+        setProjects((prev) => 
+          prev.map(project => {
+            if (project.id === selectedProjectId) {
+              return {
+                ...project,
+                totalTasks: progressData.totalTasks || project.totalTasks,
+                completedTasks: progressData.completedTasks || project.completedTasks,
+                progress: progressData.progressPercentage || project.progress
+              };
+            }
+            return project;
+          })
+        );
+      } catch (progressErr) {
+        console.warn('Failed to refresh project progress:', progressErr);
+        // Don't show error to user, progress will update on next page load
+      }
+    } catch (err) {
+      setTaskLoading(false);
+      const message = err?.response?.data?.message || 'Failed to create task. Please try again.';
+      setTaskError(message);
+    }
+  };
+
   return (
     <DashboardLayout pageTitle="My Projects">
       <Modal isOpen={isCreateOpen} title="Create New Project" onClose={() => !loading && setIsCreateOpen(false)}>
@@ -243,6 +324,68 @@ function Projects() {
           </div>
         </form>
       </Modal>
+
+      {/* Add Task Modal */}
+      <Modal isOpen={isAddTaskOpen} title="Add Task" onClose={() => !taskLoading && setIsAddTaskOpen(false)}>
+        <form onSubmit={submitCreateTask}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="task-title">Task Title</label>
+            <input 
+              id="task-title" 
+              className="input" 
+              type="text" 
+              value={taskTitle} 
+              onChange={(e) => setTaskTitle(e.target.value)} 
+              placeholder="Enter task title" 
+              required 
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="task-desc">Task Description</label>
+            <textarea 
+              id="task-desc" 
+              className="textarea" 
+              value={taskDescription} 
+              onChange={(e) => setTaskDescription(e.target.value)} 
+              placeholder="Optional description" 
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="task-due-date">Due Date</label>
+            <input 
+              id="task-due-date" 
+              className="input" 
+              type="date" 
+              value={taskDueDate} 
+              onChange={(e) => setTaskDueDate(e.target.value)} 
+              required 
+            />
+          </div>
+          {taskError && <div className="error-text" role="alert">{taskError}</div>}
+          <div className="actions">
+            <button 
+              type="button" 
+              className="btn btn-ghost" 
+              onClick={() => setIsAddTaskOpen(false)} 
+              disabled={taskLoading}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={taskLoading}>
+              {taskLoading ? <span className="spinner" /> : 'Create Task'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Toast Notification */}
+      <Toast
+        message={toastMessage}
+        type="success"
+        isVisible={toastVisible}
+        onClose={() => setToastVisible(false)}
+        duration={4000}
+      />
 
       {/* Error message display */}
       {error && !isCreateOpen && (
@@ -292,6 +435,7 @@ function Projects() {
                 key={p.id}
                 project={p}
                 onProjectClick={handleProjectClick}
+                onAddTasks={handleAddTasks}
                 onDeleteProject={handleDeleteProject}
               />
             ))

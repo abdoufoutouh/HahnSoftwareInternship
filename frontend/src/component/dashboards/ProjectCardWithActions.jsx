@@ -1,7 +1,7 @@
 import React from 'react';
 import ProjectCard from './ProjectCards';
 
-const ProjectCardWithActions = ({ project, onProjectClick, onDeleteProject }) => {
+const ProjectCardWithActions = ({ project, onProjectClick, onDeleteProject, onAddTasks }) => {
   return (
     <div className="project-card-with-actions">
       <ProjectCard project={project} onClick={onProjectClick} />
@@ -11,6 +11,12 @@ const ProjectCardWithActions = ({ project, onProjectClick, onDeleteProject }) =>
           onClick={() => onProjectClick && onProjectClick(project.id)}
         >
           Voir détails
+        </button>
+        <button
+          className="btn btn-primary"
+          onClick={() => onAddTasks && onAddTasks(project.id)}
+        >
+          Add tasks
         </button>
         <button
           className="btn btn-danger"

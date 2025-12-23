@@ -18,6 +18,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     @Query("SELECT DISTINCT p FROM Project p LEFT JOIN FETCH p.tasks WHERE p.user.email = :email")
     List<Project> findAllByUser_Email(@Param("email") String email);
 
+
     Optional<Project> findByIdAndUser_Email(Long projectId, String email);
 
 }
